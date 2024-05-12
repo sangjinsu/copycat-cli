@@ -88,12 +88,12 @@ func copyFile(src, dst, old, new string) error {
 
 func removeDir(src string) error {
 	
-	stat, err := os.Stat(src)
+	srcInfo, err := os.Stat(src)
 	if err != nil {
 		return err
 	}
 
-	if !stat.IsDir() {
+	if !srcInfo.IsDir() {
 		return fmt.Errorf("%s is not a directory", src)
 	}
 	
