@@ -86,6 +86,25 @@ func copyFile(src, dst, old, new string) error {
 	return nil
 }
 
+func removeDir(src string) error {
+	
+	stat, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if !stat.IsDir() {
+		return fmt.Errorf("%s is not a directory", src)
+	}
+	
+	err = os.RemoveAll(src)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	var src, dst, old, new string
 	inputs := bufio.NewScanner(os.Stdin)
