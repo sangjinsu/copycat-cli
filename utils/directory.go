@@ -12,6 +12,10 @@ import (
 	"sync"
 )
 
+var wg sync.WaitGroup
+var mu sync.Mutex
+var copyErr error
+
 func CopyDir(src, dst string, replacer *strings.Replacer) error {
 	// 소스 디렉토리 정보 가져오기
 	srcInfo, err := os.Stat(src)
@@ -38,40 +42,31 @@ func CopyDir(src, dst string, replacer *strings.Replacer) error {
 		return err
 	}
 
-	var wg sync.WaitGroup
-	var copyErr error
-	var mu sync.Mutex
-
 	for _, entry := range entries {
 		srcPath := filepath.Join(src, entry.Name())
 		dstPath := filepath.Join(dst, entry.Name())
 		wg.Add(1)
 		if entry.IsDir() {
 			// 디렉토리인 경우 재귀적으로 복사
-			go func(srcPath, dstPath string, replacer *strings.Replacer) {
-				defer wg.Done()
-				if err := CopyDir(srcPath, dstPath, replacer); err != nil {
-					mu.Lock()
-					copyErr = err
-					mu.Unlock()
-				}
-			}(srcPath, dstPath, replacer)
+			go copyFileSystem(srcPath, dstPath, replacer, CopyDir)
 		} else {
 			// 파일인 경우 복사
-			go func(srcPath, dstPath string, replacer *strings.Replacer) {
-				defer wg.Done()
-				if err := copyFile(srcPath, dstPath, replacer); err != nil {
-					mu.Lock()
-					copyErr = err
-					mu.Unlock()
-				}
-			}(srcPath, dstPath, replacer)
+			go copyFileSystem(srcPath, dstPath, replacer, copyFile)
 		}
 	}
 
 	wg.Wait()
 
 	return copyErr
+}
+
+func copyFileSystem(srcPath, dstPath string, replacer *strings.Replacer, copyFunc func(srcPath, dstPath string, replacer *strings.Replacer) error) {
+	defer wg.Done()
+	if err := copyFunc(srcPath, dstPath, replacer); err != nil {
+		mu.Lock()
+		copyErr = err
+		mu.Unlock()
+	}
 }
 
 func copyFile(src, dst string, replacer *strings.Replacer) error {
